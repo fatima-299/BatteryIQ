@@ -1,0 +1,21 @@
+# Environment
+.env
+__pycache__/
+*.pyc
+.DS_Store
+
+# Data (too large for git)
+data/raw/
+data/processed/
+data/features/
+
+# Models (use S3)
+ml/models/*.pkl
+ml/models/*.pt
+
+# Node
+app/frontend/node_modules/
+app/frontend/.next/
+
+# Jupyter
+.ipynb_checkpoints/
