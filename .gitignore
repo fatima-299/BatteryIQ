@@ -19,3 +19,4 @@ app/frontend/.next/
 
 # Jupyter
 .ipynb_checkpoints/
+data/
