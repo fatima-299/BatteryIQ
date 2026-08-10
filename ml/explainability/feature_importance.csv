@@ -1,0 +1,22 @@
+feature,label,mean_shap
+chem_NMC,Chemistry: NMC,0.00018395686
+src_nasa,Source: NASA,0.0010210174
+ir_growth_rate,IR Growth Rate,0.0076293163
+arrhenius_factor,Arrhenius Factor (exp(-Ea/RT)),0.017531866
+chem_CS2,Chemistry: CS2 (LiCoO2),0.021101441
+chem_LFP,Chemistry: LFP,0.028052976
+lifecycle_stage,Lifecycle Stage,0.028080069
+cycles_from_start,Cycles from Start,0.0385721
+avg_temp_c,Average Temperature (°C),0.057875518
+avg_current_a,Average Current (A),0.08612127
+src_stanford,Source: Stanford,0.100288756
+cycle_number,Cycle Number,0.102758706
+capacity_fade_rate,Capacity Fade Rate,0.10850939
+avg_voltage_v,Average Voltage (V),0.20155492
+src_calce,Source: CALCE,0.20470224
+cycle_normalized,Normalised Cycle Position,0.24777478
+internal_resistance,Internal Resistance (Ω),0.2782171
+ir_cumulative_growth,Cumulative IR Growth,0.45377
+chem_CX2,Chemistry: CX2 (LiCoO2),0.5898401
+cycle_capacity_ah,Discharge Capacity (Ah),1.3575181
+cap_normalized,Normalised Capacity,4.716735
