@@ -1,0 +1,2 @@
+model,dataset,n_cells,n_cycles,rmse,mae,r2,mape,note
+XGBoost_v2,HNEI_NMC_LCO,14,15064,13.513718112010242,12.849067333949021,-4.406569562963594,14.123629550610028,Independent validation — never in training
