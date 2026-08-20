@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import FleetDashboard from "./pages/FleetDashboard";
 import CellDeepDive from "./pages/CellDeepDive";
 import BatteryChat from "./pages/BatteryChat";

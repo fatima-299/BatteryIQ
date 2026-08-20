@@ -12,8 +12,42 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 import io
 import os
+import re
+from reportlab.graphics.shapes import Drawing, Rect
+from reportlab.lib.colors import HexColor as _HexColor
 
 router = APIRouter()
+
+
+def markdown_bold_to_reportlab(text: str) -> str:
+    """
+    Safety net in case the model still emits markdown despite the
+    plain-text instruction in the prompt. ReportLab's Paragraph only
+    understands its own limited HTML-like markup (<b>...</b>), not
+    markdown (**...**) — without this, asterisks show up literally
+    in the rendered PDF.
+    """
+    return re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
+
+
+def battery_icon_drawing(width=20, height=13, color="#38BDF8"):
+    """
+    A small vector battery icon (body + terminal nub), drawn with
+    ReportLab shapes instead of relying on a 🔋 emoji glyph. Helvetica
+    (ReportLab's default font) has no emoji glyphs, so the emoji was
+    rendering as an empty box — this renders correctly everywhere,
+    with no font/encoding dependency.
+    """
+    fill = _HexColor(color)
+    d = Drawing(width + 4, height)
+    # Battery body (rounded rect)
+    d.add(Rect(0, 1, width, height - 2,
+               fillColor=fill, strokeColor=fill, strokeWidth=0,
+               rx=2, ry=2))
+    # Terminal nub
+    d.add(Rect(width, height * 0.28, 3, height * 0.44,
+               fillColor=fill, strokeColor=fill, strokeWidth=0))
+    return d
 
 
 def generate_narrative(cell_data: dict, history_stats: dict) -> str:
@@ -25,6 +59,9 @@ def generate_narrative(cell_data: dict, history_stats: dict) -> str:
         prompt = f"""
 Write a professional battery health report narrative for fleet managers.
 Be concise (3 short paragraphs), factual, and actionable.
+Write in PLAIN TEXT ONLY — do not use markdown formatting such as **bold**,
+*italics*, or bullet points with asterisks. This text will be placed
+directly into a PDF, so any literal asterisks will show up in the document.
 
 Cell: {cell_data.get('cell_id')}
 Chemistry: {cell_data.get('chemistry')} from {cell_data.get('source')}
@@ -36,7 +73,7 @@ Risk score: {cell_data.get('risk_score')}
 Historical stats:
 - Starting SOH: {history_stats.get('start_soh', 'N/A')}%
 - Total SOH drop: {history_stats.get('soh_drop', 'N/A')}%
-- Average fade rate: {history_stats.get('fade_rate', 'N/A')}% per cycle
+- Average fade rate: {history_stats.get('fade_rate', 'N/A')}% of SOH per cycle
 
 Write: 1) Current status summary, 2) Degradation analysis, 3) Recommendation
 """
@@ -111,7 +148,7 @@ async def generate_report(cell_id: str):
             Table, TableStyle, Image as RLImage
         )
         from reportlab.lib.units import cm
-        from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+        from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
 
         # Get cell data
         from services.database import get_cell_history, get_cell_latest
@@ -125,11 +162,31 @@ async def generate_report(cell_id: str):
             )
 
         history_list  = history.fillna(0).to_dict(orient="records")
+
+        # SOH-based fade rate, correctly labelled: %-of-SOH lost per cycle,
+        # derived directly from the observed SOH drop over the cycle span.
+        # (The raw `capacity_fade_rate` column is in Ah/cycle, not %/cycle —
+        # do not reuse it here under a "% per cycle" label, that mismatches
+        # units by ~1000x and produces a misleading narrative.)
+        cycle_span = float(history["cycle_number"].iloc[-1] -
+                            history["cycle_number"].iloc[0])
+        start_soh  = round(float(history["soh_pct"].iloc[0]), 2)
+        soh_drop   = round(float(history["soh_pct"].iloc[0] -
+                                 history["soh_pct"].iloc[-1]), 2)
+        soh_fade_rate_pct_per_cycle = round(
+            soh_drop / cycle_span, 5
+        ) if cycle_span > 0 else 0.0
+        # Keep the raw capacity fade rate too, correctly labelled in Ah/cycle,
+        # in case it's useful context — just not mislabeled as a percentage.
+        capacity_fade_rate_ah_per_cycle = round(
+            float(history["capacity_fade_rate"].mean()), 6
+        )
+
         history_stats = {
-            "start_soh": round(float(history["soh_pct"].iloc[0]), 2),
-            "soh_drop" : round(float(history["soh_pct"].iloc[0] -
-                                     history["soh_pct"].iloc[-1]), 2),
-            "fade_rate": round(float(history["capacity_fade_rate"].mean()), 4),
+            "start_soh"     : start_soh,
+            "soh_drop"      : soh_drop,
+            "fade_rate"     : soh_fade_rate_pct_per_cycle,   # % SOH per cycle
+            "fade_rate_ah"  : capacity_fade_rate_ah_per_cycle,  # Ah per cycle
         }
 
         # Generate narrative
@@ -167,7 +224,7 @@ async def generate_report(cell_id: str):
         header_style = ParagraphStyle(
             "header",
             fontSize=22, textColor=white,
-            alignment=TA_CENTER, fontName="Helvetica-Bold",
+            alignment=TA_LEFT, fontName="Helvetica-Bold",
             spaceAfter=6
         )
         sub_style = ParagraphStyle(
@@ -175,14 +232,21 @@ async def generate_report(cell_id: str):
             fontSize=11, textColor=white,
             alignment=TA_CENTER, fontName="Helvetica",
         )
+        icon = battery_icon_drawing(width=22, height=15, color="#38BDF8")
         header_data = [[
-            Paragraph("🔋 BatteryIQ Health Report", header_style),
+            icon,
+            Paragraph("BatteryIQ Health Report", header_style),
         ]]
-        header_table = Table(header_data, colWidths=[17*cm])
+        header_table = Table(
+            header_data,
+            colWidths=[1.3*cm, 15.7*cm]
+        )
         header_table.setStyle(TableStyle([
             ("BACKGROUND", (0,0), (-1,-1), DARK),
             ("TOPPADDING",    (0,0), (-1,-1), 15),
             ("BOTTOMPADDING", (0,0), (-1,-1), 15),
+            ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
+            ("ALIGN",         (0,0), (0,0),   "RIGHT"),
             ("ROUNDEDCORNERS", [5]),
         ]))
         story.append(header_table)
@@ -250,7 +314,7 @@ async def generate_report(cell_id: str):
         for para in narrative.split("\n\n"):
             if para.strip():
                 story.append(Paragraph(
-                    para.strip(),
+                    markdown_bold_to_reportlab(para.strip()),
                     ParagraphStyle("body", fontSize=10,
                                    leading=14, alignment=TA_JUSTIFY)
                 ))

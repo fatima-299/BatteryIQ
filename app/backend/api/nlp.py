@@ -34,7 +34,10 @@ def extract_cell_ids(text: str) -> List[str]:
         r'\b(CX2_\d+)\b',              # CALCE CX2
         r'\b(\d{4}-\d{2}-\d{2}_c\d+)\b', # Stanford: 2017-05-12_c01
         r'\b(hnei_HNEI_[a-z])\b',     # HNEI
-        r'\bcell[_\s]?([A-Za-z0-9_]+)\b', # Generic: cell_XYZ
+        # Generic: cell_XYZ / cell XYZ42 — requires an explicit separator
+        # (so "cells"/"cell" alone can't match) and at least one digit in
+        # the captured token (so it can't grab stray plain-English words).
+        r'\bcell[_\s]+([A-Za-z0-9_]*\d[A-Za-z0-9_]*)\b',
     ]
     found = []
     for pattern in patterns:
