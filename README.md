@@ -211,7 +211,3 @@ to `ml/models/` and loaded automatically by the backend at startup.
 
 ---
 
-## 9. License
-
-[Add your license here — e.g. MIT, or "Academic project, all rights reserved" if this is
-submitted coursework not intended for reuse.]
