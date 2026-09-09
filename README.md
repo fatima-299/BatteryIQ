@@ -21,7 +21,7 @@ BatteryIQ/
 │   ├── backend/          ← FastAPI app: main.py + 6 API routers
 │   └── frontend/         ← React app: 5 pages, 4 AI modules
 ├── dashboard/            ← Power BI dashboard (.pbix file)
-├── data/                 ← raw/, processed/, features/ (see Datasets below — not all committed)
+├── data/                 ← raw/, processed/, features/ (see Datasets below — not committed, see 1.1)
 ├── docs/                 ← architecture notes, ad-hoc data-check scripts
 ├── memoire/              ← the mémoire itself + all 41 figures used in it
 │   └── figures/          ← publication-ready figures (fig01–fig37 + variants)
@@ -29,17 +29,32 @@ BatteryIQ/
 ├── notebooks/            ← EDA Jupyter notebooks (02–05)
 ├── pipeline/             ← ingestion scripts (01–03) + ETL (04–06, PySpark)
 ├── scripts/              ← one-off setup/scaffolding scripts (not part of the running app)
-├── tests/                ← unit/integration tests
 ├── env.example           ← template for your own .env file
 ├── requirements.txt      ← root-level Python dependencies
 ├── run.sh                ← starts backend + frontend together, one command
+├── LICENSE               ← MIT License
 └── README.md             ← this file
 ```
 
-**Datasets used:** NASA PCoE (34 NMC cells, 18650 format), Stanford/MIT MATR (140 LFP cells),
-CALCE/University of Maryland (15 LiCoO₂ cells, CS2 + CX2), and RWTH Aachen (48 NMC cells,
-real drive-cycle profiles — downloaded but not yet processed, see thesis Recommendations).
-Combined: **134,938 cycles across 189 cells and 4 chemistries.**
+### 1.1 Datasets and data availability
+
+Combined: **134,938 cycles across 189 cells and 4 chemistries**, from 4 public sources.
+
+**Raw data files are not committed to this repository** — combined, they run into several
+gigabytes, well beyond what's practical to version-control on GitHub (`data/raw/`,
+`data/processed/`, and `data/features/` are git-ignored for this reason). To reproduce this
+project, download each source directly:
+
+| Source | Chemistry / cells | Cycles | Where to get it |
+|---|---|---|---|
+| NASA PCoE | NMC · 34 cells | 1,871 | [NASA Prognostics Data Repository](https://www.nasa.gov/intelligent-systems-division/discovery-and-systems-health/pcoe/pcoe-data-set-repository/) |
+| Stanford / MIT (MATR) | LFP · 140 cells | 114,688 | [data.matr.io/1](https://data.matr.io/1/) — associated with Severson et al. (2019), *Nature Energy* |
+| CALCE (U. Maryland) | LiCoO₂ · 15 cells | 18,379 | [calce.umd.edu/battery-data](https://calce.umd.edu/battery-data) |
+| RWTH Aachen | NMC · 48 cells | — (downloaded, not yet processed — see thesis Recommendations) | [publications.rwth-aachen.de/record/818642](https://publications.rwth-aachen.de/record/818642) (DOI: 10.18154/RWTH-2021-04545) |
+
+Once downloaded, place raw files under `data/raw/<source>/` matching the structure each
+ingestion script in `pipeline/ingestion/` expects, then follow Section 6 below to rebuild
+the processed dataset and warehouse from scratch.
 
 ---
 
@@ -164,6 +179,7 @@ Predictive Alerts, Physics Analytics).
 ## 6. Re-running the data pipeline (optional)
 
 Only needed if you want to reprocess data from scratch rather than using an existing database.
+Make sure you've downloaded the raw sources per Section 1.1 first.
 
 ```bash
 # 1. Ingest each source
@@ -208,6 +224,3 @@ to `ml/models/` and loaded automatically by the backend at startup.
 | Frontend | React 18 |
 | LLM module | GPT-4o (OpenAI), RAG architecture |
 | BI dashboard | Power BI Desktop, DirectQuery |
-
----
-
